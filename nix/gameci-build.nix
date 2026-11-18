@@ -1,24 +1,18 @@
 # `gameci-build`: run a Unity build through the game-ci CLI with a pinned editor image and Podman.
 #
-# The CLI hard-codes `docker run`, so a `docker` symlink to Podman is put on its PATH.
+# The CLI hard-codes `docker run`, so a `docker` command that is Podman (docker-shim.nix) is put on its PATH.
 # The host still needs Podman set up (rootless: newuidmap/newgidmap wrappers, subuid ranges and
 # /etc/containers/policy.json). On NixOS, `virtualisation.podman.enable = true` does that.
 {
   writeShellApplication,
   podman,
-  runCommand,
+  dockerShim,
   jq,
   coreutils,
   gnused,
   game-ci-cli,
   imagesJson,
 }:
-let
-  dockerShim = runCommand "podman-as-docker" { } ''
-    mkdir -p $out/bin
-    ln -s ${podman}/bin/podman $out/bin/docker
-  '';
-in
 writeShellApplication {
   name = "gameci-build";
 
@@ -107,12 +101,14 @@ writeShellApplication {
     if [ -f Library/.gameci-target ] && [ "$(cat Library/.gameci-target)" != "$target" ]; then
       echo "$prog: WARNING: Library/ is the $(cat Library/.gameci-target) import state, building $target: expect a full re-import (run gameci-checkout --target $target first)" >&2
     fi
-    exec game-ci build \
+    code=0
+    run_cancellable game-ci build \
       --targetPlatform "$platform" \
       --customImage "$image" \
       --buildsPath "$out" \
       "''${versioning[@]}" \
-      "''${extra[@]}"
+      "''${extra[@]}" || code=$?
+    exit "$code"
   '';
 
   meta = {

@@ -6,7 +6,7 @@
 {
   writeShellApplication,
   podman,
-  runCommand,
+  dockerShim,
   jq,
   coreutils,
   gnused,
@@ -14,12 +14,6 @@
   gameci-test-summary,
   imagesJson,
 }:
-let
-  dockerShim = runCommand "podman-as-docker" { } ''
-    mkdir -p $out/bin
-    ln -s ${podman}/bin/podman $out/bin/docker
-  '';
-in
 writeShellApplication {
   name = "gameci-test";
 
@@ -116,7 +110,7 @@ writeShellApplication {
     # The CLI mounts its working directory into the container, so it has to run in the project.
     cd "$project"
     code=0
-    game-ci test --docker \
+    run_cancellable game-ci test --docker \
       --customImage "$image" \
       --testPlatforms "$platforms" \
       --artifactsPath "$artifacts" \

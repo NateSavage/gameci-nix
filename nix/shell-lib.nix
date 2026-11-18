@@ -83,6 +83,64 @@
     fi
   }
 
+  # Cancelling a job. The runner stops a cancelled step by signalling its processes, but the Podman
+  # container is detached from them and would keep running: still importing and holding the Unity
+  # licence seat, with nobody reading its output. Every container the CLI starts carries the label
+  # gameci.run=$GAMECI_RUN_ID (the `docker` shim in docker-shim.nix adds it), and run_cancellable
+  # stops the ones belonging to this run when it gets SIGINT or SIGTERM.
+  GAMECI_RUN_ID="$$-$SECONDS-$RANDOM"
+  export GAMECI_RUN_ID
+
+  # (shellcheck cannot see that cancel_containers is called from a trap)
+  # shellcheck disable=SC2329
+  run_container_ids() {
+    podman ps -q --filter "label=gameci.run=$GAMECI_RUN_ID" 2>/dev/null || true
+  }
+
+  # Asks the Unity editor in each of this run's containers to quit, so the container's own script
+  # carries on and returns the licence seat, then waits for the containers to be gone. The runner only
+  # gives a cancelled step a few seconds, so the first thing done is the signal; the wait (and the
+  # forced stop after it) only matter if this process is still alive. A container that does not quit
+  # in time is stopped, which cannot return the seat.
+  # shellcheck disable=SC2329
+  cancel_containers() {
+    local ids=() id waited=0
+    mapfile -t ids < <(run_container_ids)
+    [ "''${#ids[@]}" -gt 0 ] || return 0
+    echo "$prog: cancelled: asking Unity in the container to quit so that it returns the licence seat" >&2
+    for id in "''${ids[@]}"; do
+      podman exec "$id" pkill -TERM -f '^/opt/unity/Editor/Unity ' >/dev/null 2>&1 || true
+    done
+    while [ "$waited" -lt 180 ] && [ -n "$(run_container_ids)" ]; do
+      sleep 2
+      waited=$((waited + 2))
+    done
+    mapfile -t ids < <(run_container_ids)
+    if [ "''${#ids[@]}" -gt 0 ]; then
+      echo "$prog: the container did not quit in time, stopping it (the licence seat may not have been returned)" >&2
+      podman stop --time 10 "''${ids[@]}" >/dev/null 2>&1 || true
+    fi
+  }
+
+  # run_cancellable COMMAND...: runs COMMAND and returns its exit code. The command runs in the
+  # background so that a signal is handled at once (a shell only runs its trap after a foreground
+  # command ends); on SIGINT or SIGTERM the containers of this run are told to quit, and the command
+  # is then waited for.
+  run_cancellable() {
+    local child code=0 signalled=0
+    trap 'signalled=1; cancel_containers' INT TERM
+    "$@" &
+    child=$!
+    # a signal ends a wait early, with a status of its own: wait again for the command's real one
+    while :; do
+      signalled=0
+      wait "$child" && code=0 || code=$?
+      [ "$signalled" -eq 1 ] || break
+    done
+    trap - INT TERM
+    return "$code"
+  }
+
   # ensure_image NEXT_STAGE: make sure the pinned editor image is in local storage, pulling it if
   # not. The Unity editor image is several GB, and the wait for it before a version's first run is
   # the longest of the whole build, so a pull is a stage of its own: the [CI] markers are turned

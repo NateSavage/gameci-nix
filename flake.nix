@@ -20,10 +20,13 @@
       );
 
       game-ci-cli = pkgs.callPackage ./nix/cli.nix { };
-      gameci-build = pkgs.callPackage ./nix/gameci-build.nix { inherit game-ci-cli imagesJson; };
+      dockerShim = pkgs.callPackage ./nix/docker-shim.nix { };
+      gameci-build = pkgs.callPackage ./nix/gameci-build.nix {
+        inherit game-ci-cli dockerShim imagesJson;
+      };
       gameci-test-summary = pkgs.callPackage ./nix/gameci-test-summary.nix { };
       gameci-test = pkgs.callPackage ./nix/gameci-test.nix {
-        inherit game-ci-cli gameci-test-summary imagesJson;
+        inherit game-ci-cli dockerShim gameci-test-summary imagesJson;
       };
       gameci-checkout = pkgs.callPackage ./nix/gameci-checkout.nix { };
       gameci-library = pkgs.callPackage ./nix/gameci-library.nix { };
