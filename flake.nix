@@ -26,6 +26,7 @@
         inherit game-ci-cli gameci-test-summary imagesJson;
       };
       gameci-checkout = pkgs.callPackage ./nix/gameci-checkout.nix { };
+      gameci-library = pkgs.callPackage ./nix/gameci-library.nix { };
       update-images = pkgs.callPackage ./nix/update-images.nix { };
 
       # everything a runner's jobs call, in one package
@@ -36,6 +37,7 @@
           gameci-test
           gameci-test-summary
           gameci-checkout
+          gameci-library
         ];
       };
 
@@ -53,6 +55,7 @@
           gameci-test
           gameci-test-summary
           gameci-checkout
+          gameci-library
           update-images
           ;
         default = gameci-build;
@@ -62,6 +65,7 @@
         build = app gameci-build "gameci-build";
         test = app gameci-test "gameci-test";
         checkout = app gameci-checkout "gameci-checkout";
+        library = app gameci-library "gameci-library";
         update-images = app update-images "gameci-update-images";
         default = self.apps.${system}.build;
       };
