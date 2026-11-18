@@ -82,4 +82,26 @@
       extra+=(--dockerMemoryLimit "$(( limit * 9 / 10 / 1048576 ))m")
     fi
   }
+
+  # ensure_image NEXT_STAGE: make sure the pinned editor image is in local storage, pulling it if
+  # not. The Unity editor image is several GB, and the wait for it before a version's first run is
+  # the longest of the whole build, so a pull is a stage of its own: the [CI] markers are turned
+  # into a log section and a line in the run summary by gameci-stages. When the image is already
+  # there only one line is printed. The CLI would pull it anyway, silently inside `docker run`;
+  # doing it here means that run finds it ready. NEXT_STAGE names the stage that starts after
+  # (the editor start-up, licence activation and project import).
+  ensure_image() {
+    local next=$1 start took
+    if podman image exists "$image" 2>/dev/null; then
+      echo "$prog: editor image already present" >&2
+    else
+      echo "[CI] stage start Image"
+      echo "$prog: pulling the editor image $image" >&2
+      start=$SECONDS
+      podman pull "$image" >&2
+      took=$((SECONDS - start))
+      echo "[CI] stage end Image $((took / 60))m$(printf '%02d' $((took % 60)))s"
+    fi
+    echo "[CI] stage start $next"
+  }
 ''

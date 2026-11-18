@@ -234,6 +234,25 @@ writeShellApplication {
     step "Download LFS objects not already cached" do_lfs
     log "LFS cache now: $(du -sh "$lfs_dir" 2>/dev/null | cut -f1)"
 
+    # Every file Git LFS tracks should now hold its content. One that is still the small pointer
+    # text (version https://git-lfs..., oid, size) is a file the editor cannot import, and the build
+    # then fails somewhere far from the cause (an Addressables "unsupported file type" error, say).
+    # The usual reason: .gitattributes matches an extension in one case only (*.tga), and Git on
+    # Linux matches patterns case-sensitively where Windows does not, so Foo.TGA committed from
+    # Windows is a pointer that Linux never replaces. Say so here, with the files, instead.
+    # `git lfs ls-files` marks a file whose working-tree content is still the pointer with "-"
+    # (and one holding its content with "*").
+    pointer_files=()
+    while read -r _ marker file; do
+      [ "$marker" != "-" ] || pointer_files+=("$file")
+    done < <(git lfs ls-files 2>/dev/null)
+    if [ "''${#pointer_files[@]}" -gt 0 ]; then
+      log "WARNING: ''${#pointer_files[@]} Git LFS file(s) were not replaced by their content"
+      printf '  %s\n' "''${pointer_files[@]:0:10}"
+      [ "''${#pointer_files[@]}" -le 10 ] || echo "  ... and $(( ''${#pointer_files[@]} - 10 )) more"
+      echo "::warning title=Git LFS files are still pointers::''${#pointer_files[@]} file(s) such as ''${pointer_files[0]} are Git LFS pointers, not their content, so Unity cannot import them. Usually .gitattributes matches the extension in one case only: add the other case (for example *.TGA next to *.tga) and commit."
+    fi
+
     echo "$dir"
     if [ -n "''${GITHUB_ENV:-}" ]; then
       echo "PROJECT_DIR=$dir" >> "$GITHUB_ENV"

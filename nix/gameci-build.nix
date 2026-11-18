@@ -89,6 +89,7 @@ writeShellApplication {
     default_memory_limit
 
     echo "$prog: Unity $unity_version, target $target, image $image" >&2
+    ensure_image Import
 
     # By default the CLI derives a version number from git history (strategy "Semantic"), which
     # runs `git fetch --unshallow` and needs network access and credentials the build does not

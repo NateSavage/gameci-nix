@@ -111,6 +111,7 @@ writeShellApplication {
     fi
 
     echo "$prog: Unity $unity_version, platforms $platforms, image $image" >&2
+    ensure_image Tests
 
     # The CLI mounts its working directory into the container, so it has to run in the project.
     cd "$project"
@@ -132,6 +133,14 @@ writeShellApplication {
     if [ "''${#results[@]}" -gt 0 ]; then
       gameci-test-summary "''${results[@]}"
     fi
+
+    # The CLI exits 0 when every test passed and 2 when some failed (results exist for both). Any
+    # other code means the run itself broke (the editor, the container, the licence) before it could
+    # report, which is not a test failure and needs a different kind of attention.
+    case "$code" in
+      0|2) ;;
+      *) echo "::error::The Unity test run itself failed (exit code $code): the editor or the container broke before the tests could report, so this is not a test failure. See the log above." ;;
+    esac
 
     exit "$code"
   '';
