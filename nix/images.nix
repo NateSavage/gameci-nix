@@ -25,5 +25,10 @@ data
       module = "android";
       platform = "Android";
     };
+    # Mono only: a Mac IL2CPP build needs Apple's toolchain, which a Linux editor does not have
+    macos = {
+      module = "mac-mono";
+      platform = "StandaloneOSX";
+    };
   };
 }

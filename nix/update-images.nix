@@ -23,7 +23,7 @@ writeShellApplication {
     fi
 
     image_version="$(jq -r '.imageVersion' "$file")"
-    declare -A modules=([linux]=linux-il2cpp [windows]=windows-mono [webgl]=webgl [android]=android)
+    declare -A modules=([linux]=linux-il2cpp [windows]=windows-mono [webgl]=webgl [android]=android [macos]=mac-mono)
 
     if [ $# -gt 0 ]; then
       versions=("$@")

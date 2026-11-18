@@ -88,27 +88,49 @@ writeShellApplication {
     throttle() {
       local line last="" next=0
       # shellcheck disable=SC2162
+      # stdbuf: tr buffers about 4 KB when its output is a pipe, and one progress line is a few dozen
+      # bytes, so without it nothing came out until the download had finished
       while IFS= read line; do
+        # a carriage return followed by a newline makes an empty line: skip it, so that "the last
+        # line" below is the last real one
+        [ -n "$line" ] || continue
         last="$line"
         if [ "$SECONDS" -ge "$next" ]; then
           echo "    $line"
           next=$((SECONDS + 30))
         fi
-      done < <(tr '\r' '\n')
+      done < <(stdbuf -oL tr '\r' '\n')
       # the final state (100%) is usually swallowed by the throttle
       [ -z "$last" ] || echo "    $last"
+    }
+
+    # Size of the LFS store in MB, so a long step can say how much it has fetched. Git LFS keeps
+    # finished objects (and the partial one it is working on) there, so it grows while a download runs.
+    lfs_store_mb() {
+      local common
+      common="$(git rev-parse --path-format=absolute --git-common-dir 2>/dev/null)" || return 0
+      du -sm "$common/lfs" 2>/dev/null | cut -f1
     }
 
     # step TITLE COMMAND...: a collapsible group in the Actions log, a heartbeat every 30s, and the
     # time the step took.
     step() {
-      local title=$1 start=$SECONDS hb rc
+      local title=$1 start=$SECONDS hb rc base_mb
       shift
       echo "::group::$title"
       log "$title"
+      base_mb="$(lfs_store_mb)"
       (
+        # every 30s: how long it has run and, if the LFS store has grown, how much it has fetched
+        # and how fast (git itself prints nothing for long stretches when run without a terminal)
         while sleep 30; do
-          log "  ... still working on '$title' ($((SECONDS - start))s so far, .git is $(du -sh "$(git rev-parse --path-format=absolute --git-common-dir 2>/dev/null)" 2>/dev/null | cut -f1))"
+          elapsed=$((SECONDS - start))
+          now_mb="$(lfs_store_mb)"
+          grew=""
+          if [ -n "$base_mb" ] && [ -n "$now_mb" ] && [ "$now_mb" -gt "$base_mb" ]; then
+            grew=", fetched $((now_mb - base_mb)) MB so far ($(( (now_mb - base_mb) / elapsed )) MB/s on average)"
+          fi
+          log "  ... still working on '$title' (''${elapsed}s so far''${grew})"
         done
       ) &
       hb=$!

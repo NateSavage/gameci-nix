@@ -1,18 +1,20 @@
 {
-  "repository": "docker.io/unityci/editor",
   "imageVersion": "3.2.2",
+  "repository": "docker.io/unityci/editor",
   "versions": {
-    "6000.6.6f1": {
-      "linux": "sha256:45d03f4a677a3859dc7c247314d35ae5ebfc2f13665e7873d2578e497574d1f4",
-      "windows": "sha256:b233d725c25f87395ab7131ff39b7d9df5b4c85eb62986b1714e9415c32799d6",
-      "webgl": "sha256:569738ba57a1c2c5dd4152b65f94a916c70c219507092ead72071cf637944d07",
-      "android": "sha256:bbe45b1d162f8c615ad35b4b65c131b42f6e2588dd30f29d830af68d458bbc76"
-    },
     "6000.0.58f2": {
+      "android": "sha256:80a6e7bbb82f7fbc9048c9a09c5acf15e9b32971d033c1efc0c934a3f0bfc3fd",
       "linux": "sha256:3d8a5f0e174b197d94716a0b6ade1f255e9ba6b327a2e11861fec8d8c871c2c3",
-      "windows": "sha256:8a1cb507859d61a98e02afbfadadabd33cedfeeb9c1b72c34cc86cb8ce1fc920",
+      "macos": "sha256:cf9f78168cfeaf6ef5249f4fe9b7032ef543cda8df0f8fc384c70093d93e393a",
       "webgl": "sha256:2478e701288d45918f4780a27ce0dd3f46ee70a258e8990f79a77aa1abb89d92",
-      "android": "sha256:80a6e7bbb82f7fbc9048c9a09c5acf15e9b32971d033c1efc0c934a3f0bfc3fd"
+      "windows": "sha256:8a1cb507859d61a98e02afbfadadabd33cedfeeb9c1b72c34cc86cb8ce1fc920"
+    },
+    "6000.6.6f1": {
+      "android": "sha256:bbe45b1d162f8c615ad35b4b65c131b42f6e2588dd30f29d830af68d458bbc76",
+      "linux": "sha256:45d03f4a677a3859dc7c247314d35ae5ebfc2f13665e7873d2578e497574d1f4",
+      "macos": "sha256:f73988dedb65b70e2668ef83e78fa57e9c2c540b882448049501f086847ec955",
+      "webgl": "sha256:569738ba57a1c2c5dd4152b65f94a916c70c219507092ead72071cf637944d07",
+      "windows": "sha256:b233d725c25f87395ab7131ff39b7d9df5b4c85eb62986b1714e9415c32799d6"
     }
   }
 }
