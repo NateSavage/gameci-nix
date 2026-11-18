@@ -39,9 +39,15 @@ let
   #     rootless networking (pasta) opens /dev/net/tun
   #   ProtectHostname
   #     the container runtime calls sethostname inside the container
+  #   SystemCallFilter
+  #     the module denies @mount, capset, sethostname and setdomainname. Podman needs mount (the
+  #     overlay storage and the container's own filesystems), sethostname (the container's
+  #     hostname), and capset: denying it makes systemd turn on no_new_privs whatever
+  #     NoNewPrivileges says, which stops the setuid newuidmap from working ("write to uid_map
+  #     failed: Operation not permitted"). The rest of the module's filter is kept.
   #
-  # Everything else stays as the module sets it, including the syscall filter, read-only system,
-  # kernel/cgroup protections and address-family limits (all verified to work with Podman).
+  # Everything else stays as the module sets it: read-only system, kernel/cgroup protections and
+  # address-family limits. All of it was tested with a real container under a transient unit.
   podmanOverrides = {
     NoNewPrivileges = false;
     PrivateUsers = false;
@@ -49,6 +55,14 @@ let
     PrivateDevices = false;
     ProtectHostname = false;
     ProtectProc = "default";
+    SystemCallFilter = lib.mkForce [
+      "~@clock"
+      "~@cpu-emulation"
+      "~@module"
+      "~@obsolete"
+      "~@raw-io"
+      "~@reboot"
+    ];
     CapabilityBoundingSet = [
       "CAP_SETUID"
       "CAP_SETGID"
