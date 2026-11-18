@@ -45,6 +45,10 @@ let
   #     hostname), and capset: denying it makes systemd turn on no_new_privs whatever
   #     NoNewPrivileges says, which stops the setuid newuidmap from working ("write to uid_map
   #     failed: Operation not permitted"). The rest of the module's filter is kept.
+  #   RestrictSUIDSGID
+  #     unpacking an image layer creates setuid files (/usr/bin/chage and friends in the Unity
+  #     image), and this option makes chmod with a setuid bit fail: "unpacking failed ... open
+  #     /usr/bin/chage: operation not permitted". The files only live inside the user namespace.
   #
   # Everything else stays as the module sets it: read-only system, kernel/cgroup protections and
   # address-family limits. All of it was tested with a real container under a transient unit.
@@ -55,6 +59,7 @@ let
     PrivateDevices = false;
     ProtectHostname = false;
     ProtectProc = "default";
+    RestrictSUIDSGID = false;
     SystemCallFilter = lib.mkForce [
       "~@clock"
       "~@cpu-emulation"
