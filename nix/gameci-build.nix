@@ -90,12 +90,21 @@ writeShellApplication {
 
     echo "$prog: Unity $unity_version, target $target, image $image" >&2
 
+    # By default the CLI derives a version number from git history (strategy "Semantic"), which
+    # runs `git fetch --unshallow` and needs network access and credentials the build does not
+    # have (and defeats the shallow clone). Turn that off unless the caller chooses a strategy.
+    versioning=(--versioningStrategy None)
+    for a in "''${extra[@]}"; do
+      case "$a" in --versioningStrategy|--versioningStrategy=*) versioning=() ;; esac
+    done
+
     # The CLI mounts its working directory into the container, so it has to run in the project.
     cd "$project"
     exec game-ci build \
       --targetPlatform "$platform" \
       --customImage "$image" \
       --buildsPath "$out" \
+      "''${versioning[@]}" \
       "''${extra[@]}"
   '';
 

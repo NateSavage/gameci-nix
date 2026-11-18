@@ -58,6 +58,57 @@ writeShellApplication {
       dir="$GAMECI_CHECKOUTS/''${repo#*/}"
     fi
 
+    # --- progress output -------------------------------------------------------------------------
+    # git and git-lfs only draw their progress bars on a terminal, and a runner has none, so a long
+    # download looks like a hang. These helpers force the progress output on, keep one line per
+    # 30 seconds of it (the bars redraw with carriage returns, which would flood the log), and add
+    # a heartbeat so even a silent phase shows that something is still running.
+    ts() { date '+%H:%M:%S'; }
+    log() { echo "[$(ts)] gameci-checkout: $*"; }
+
+    throttle() {
+      local line last="" next=0
+      # shellcheck disable=SC2162
+      while IFS= read line; do
+        last="$line"
+        if [ "$SECONDS" -ge "$next" ]; then
+          echo "    $line"
+          next=$((SECONDS + 30))
+        fi
+      done < <(tr '\r' '\n')
+      # the final state (100%) is usually swallowed by the throttle
+      [ -z "$last" ] || echo "    $last"
+    }
+
+    # step TITLE COMMAND...: a collapsible group in the Actions log, a heartbeat every 30s, and the
+    # time the step took.
+    step() {
+      local title=$1 start=$SECONDS hb rc
+      shift
+      echo "::group::$title"
+      log "$title"
+      (
+        while sleep 30; do
+          log "  ... still working on '$title' ($((SECONDS - start))s so far, .git is $(du -sh .git 2>/dev/null | cut -f1))"
+        done
+      ) &
+      hb=$!
+      if "$@"; then rc=0; else rc=$?; fi
+      kill "$hb" 2>/dev/null || true
+      wait "$hb" 2>/dev/null || true
+      if [ "$rc" -eq 0 ]; then
+        log "done: $title ($((SECONDS - start))s)"
+      else
+        log "FAILED: $title (exit $rc after $((SECONDS - start))s)"
+      fi
+      echo "::endgroup::"
+      return "$rc"
+    }
+
+    do_fetch() { git fetch --progress --depth=1 --no-tags origin "$sha" 2>&1 | throttle; }
+    do_lfs() { GIT_LFS_FORCE_PROGRESS=1 git lfs pull 2>&1 | throttle; }
+    do_checkout() { git checkout --force --detach FETCH_HEAD; }
+
     mkdir -p "$dir"
     cd "$dir"
     [ -d .git ] || git init --quiet
@@ -80,15 +131,19 @@ writeShellApplication {
     # Only the commit being built: no history, no tags. LFS content is fetched separately below,
     # so checkout must not download it file by file.
     git lfs install --local --skip-smudge
-    git fetch --depth=1 --no-tags origin "$sha"
-    git checkout --force --detach FETCH_HEAD
+    log "repository $url, commit $sha, clone in $dir"
+    step "Fetch commit $sha (shallow)" do_fetch
+    step "Check out the commit" do_checkout
     # drop untracked files that are not ignored; ignored ones (Library/, build/) stay
     git clean -fd
 
     # Download only the LFS objects that are not in .git/lfs yet, then fill the working tree. Old
     # objects stay cached, so switching between branches is cheap; `git lfs prune` caps the disk
     # use at the price of fetching other branches' objects again.
-    git lfs pull
+    # how much is left to download, so a long step has a size attached to it
+    log "LFS files in this commit: $(git lfs ls-files | wc -l); cache before: $(du -sh .git/lfs 2>/dev/null | cut -f1 || echo 0)"
+    step "Download LFS objects not already cached" do_lfs
+    log "LFS cache now: $(du -sh .git/lfs 2>/dev/null | cut -f1)"
 
     echo "$dir"
     if [ -n "''${GITHUB_ENV:-}" ]; then
