@@ -231,6 +231,14 @@ writeShellApplication {
       log "another gameci-checkout is using this clone; waiting for it"
       flock 9
     fi
+    # Holding the flock means no other job is using this clone, so a git lock file is a leftover from
+    # a git that was killed (a cancelled or timed-out job) and would fail every later run.
+    for stale in shallow.lock index.lock HEAD.lock config.lock packed-refs.lock; do
+      if [ -e "$common/$stale" ]; then
+        log "removing stale git lock $stale left by an interrupted run"
+        rm -f "$common/$stale"
+      fi
+    done
     step "Fetch commit $sha (shallow)" do_fetch
     step "Check out the commit" do_checkout
     # drop untracked files that are not ignored; ignored ones (Library/, build/) stay
