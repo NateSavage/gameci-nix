@@ -27,6 +27,7 @@
       };
       gameci-checkout = pkgs.callPackage ./nix/gameci-checkout.nix { };
       gameci-library = pkgs.callPackage ./nix/gameci-library.nix { };
+      gameci-stages = pkgs.callPackage ./nix/gameci-stages.nix { };
       update-images = pkgs.callPackage ./nix/update-images.nix { };
 
       # everything a runner's jobs call, in one package
@@ -38,6 +39,7 @@
           gameci-test-summary
           gameci-checkout
           gameci-library
+          gameci-stages
         ];
       };
 
@@ -56,6 +58,7 @@
           gameci-test-summary
           gameci-checkout
           gameci-library
+          gameci-stages
           update-images
           ;
         default = gameci-build;
@@ -66,6 +69,7 @@
         test = app gameci-test "gameci-test";
         checkout = app gameci-checkout "gameci-checkout";
         library = app gameci-library "gameci-library";
+        stages = app gameci-stages "gameci-stages";
         update-images = app update-images "gameci-update-images";
         default = self.apps.${system}.build;
       };
