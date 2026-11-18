@@ -100,6 +100,12 @@ writeShellApplication {
 
     # The CLI mounts its working directory into the container, so it has to run in the project.
     cd "$project"
+
+    # gameci-checkout --target records which platform the active Library/ belongs to. Building
+    # another platform on it works, but Unity then re-imports the whole project.
+    if [ -f Library/.gameci-target ] && [ "$(cat Library/.gameci-target)" != "$target" ]; then
+      echo "$prog: WARNING: Library/ is the $(cat Library/.gameci-target) import state, building $target: expect a full re-import (run gameci-checkout --target $target first)" >&2
+    fi
     exec game-ci build \
       --targetPlatform "$platform" \
       --customImage "$image" \
