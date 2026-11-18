@@ -45,6 +45,11 @@ let
   #     hostname), and capset: denying it makes systemd turn on no_new_privs whatever
   #     NoNewPrivileges says, which stops the setuid newuidmap from working ("write to uid_map
   #     failed: Operation not permitted"). The rest of the module's filter is kept.
+  #   ProtectKernelTunables, ProtectKernelLogs
+  #     they bind-mount over parts of /proc (/proc/sys, /proc/kmsg, ...). A newer kernel (6.18;
+  #     6.6 did not mind) then refuses the container's own mount of /proc: "crun: mount `proc` to
+  #     `proc`: Operation not permitted". Either one alone is enough to break it. Found by
+  #     scripts/probe-runner-unit.sh, which tries the real unit with settings removed.
   #   RestrictSUIDSGID
   #     unpacking an image layer creates setuid files (/usr/bin/chage and friends in the Unity
   #     image), and this option makes chmod with a setuid bit fail: "unpacking failed ... open
@@ -60,6 +65,8 @@ let
     ProtectHostname = false;
     ProtectProc = "default";
     RestrictSUIDSGID = false;
+    ProtectKernelTunables = false;
+    ProtectKernelLogs = false;
     SystemCallFilter = lib.mkForce [
       "~@clock"
       "~@cpu-emulation"
